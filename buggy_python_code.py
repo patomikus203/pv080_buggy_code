@@ -1,17 +1,39 @@
 import sys
 import os
 import yaml
-import flask
+from flask import request, Response
+import logging
+import urllib3
+import urllib2
 
 app = flask.Flask(__name__)
 
 
 @app.route("/")
 def index():
-    version = flask.request.args.get("urllib_version")
-    url = flask.request.args.get("url")
-    return fetch_website(version, url)
+    version = request.args.get("urllib_version")
+    url = request.args.get("url")
 
+    if not url or not version:
+        return Response("Missing urllib_version or url parameter", mimetype='text/plain')
+
+    # Sanitize the url input to avoid XSS
+    url = sanitize_url(url)
+    
+    # Fetch the website content
+    content = fetch_website(version, url)
+    
+    if not content:
+        return Response("Invalid urllib version specified.", mimetype='text/plain')
+    
+    return Response(content, mimetype='text/plain')
+
+def sanitize_url(url):
+    # Simple sanitization example
+    # Ensure the URL is well-formed and only allows specific schemes like http/https
+    if not (url.startswith("http://") or url.startswith("https://")):
+        raise ValueError("Invalid URL scheme. Only 'http' and 'https' are allowed.")
+    return url
         
 CONFIG = {"API_KEY": "771df488714111d39138eb60df756e6b"}
 class Person(object):
@@ -39,14 +61,16 @@ def fetch_website(urllib_version, url):
 
 
 def load_yaml(filename):
-    stream = open(filename)
-    deserialized_data = yaml.load(stream, Loader=yaml.Loader) #deserializing data
+    with open(filename, 'r') as stream:
+        deserialized_data = yaml.safe_load(stream)  # Use safe_load instead of load
     return deserialized_data
     
 def authenticate(password):
-    # Assert that the password is correct
-    assert password == "Iloveyou", "Invalid password!"
-    print("Successfully authenticated!")
+    # Avoid using assert statements for production code
+    if password == "Iloveyou":
+        print("Successfully authenticated!")
+    else:
+        raise ValueError("Invalid password!")
 
 if __name__ == '__main__':
     print("Vulnerabilities:")
